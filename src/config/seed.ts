@@ -1,0 +1,97 @@
+import { SiteConfig } from '../types';
+
+export const DEFAULT_SITE_CONFIGS: SiteConfig[] = [
+  {
+    platformKey: 'boss',
+    displayName: 'BOSS直聘',
+    domains: ['zhipin.com'],
+    pages: {
+      detail: {
+        urlPattern: '/job_detail/[^/]+\\.html',
+        injection: {
+          targetSelector: ['.job-sider', '.job-detail-box', 'body'],
+          position: 'append'
+        },
+        parsers: {
+          jobId: {
+            fromUrl: 'job_detail/([^/]+)\\.html',
+            fromDom: []
+          },
+          title: ['.name h1', 'h1.job-title', 'h1[class*="name"]'],
+          company: ['.boss-info-attr', '.brand-name', '.company-info .name', '.company-name', '.aside-company h1'],
+          salary: {
+            selectors: ['.salary', 'span[class*="salary"]'],
+            regexFallback: '\\d+-\\d+K(?:·\\d+薪)?'
+          },
+          description: ['.job-sec-text', '.job-detail .text', '[class*="job-sec"]'],
+          jobTags: ['.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span']
+        }
+      },
+      list: {
+        urlPattern: '/web/geek/jobs',
+        cardSelector: '.job-card-wrap, li[class*="job-card-box"]',
+        cardIdExtractor: {
+          attrName: 'href',
+          regex: '/job_detail/([^/]+)'
+        },
+        detailPreview: {
+          triggerSelector: '.job-detail-container',
+          injection: {
+            targetSelector: ['.job-detail-box', '.detail-sub-wrapper', 'body'],
+            position: 'prepend'
+          },
+          parsers: {
+            jobId: {
+              fromUrl: 'job_detail/([^/]+)\\.html',
+              fromDom: []
+            },
+            title: ['.job-name', '.name h1', 'h1.job-title', 'h1[class*="name"]'],
+            company: ['.boss-info-attr', '.brand-name', '.company-info .name', '.company-name', '.aside-company h1'],
+            salary: {
+              selectors: ['.job-salary', '.salary', 'span[class*="salary"]'],
+              regexFallback: '\\d+-\\d+K(?:·\\d+薪)?'
+            },
+            description: ['.desc', '.job-sec-text', '.job-detail .text', '[class*="job-sec"]'],
+            jobTags: ['.job-label-list', '.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span']
+          }
+        }
+      }
+    }
+  },
+  {
+    platformKey: 'liepin',
+    displayName: '猎聘网',
+    domains: ['liepin.com'],
+    pages: {
+      detail: {
+        urlPattern: '/job/\\d+\\.shtml',
+        injection: {
+          targetSelector: ['.job-content-right', '.company-card', 'body'],
+          position: 'append'
+        },
+        parsers: {
+          jobId: {
+            fromUrl: 'job/(\\d+)\\.shtml',
+            fromDom: []
+          },
+          title: ['.job-title-left h1', '.job-title', 'h1[class*="title"]'],
+          company: ['.company-name', '.company-card .name', '[class*="company-name"]'],
+          salary: {
+            selectors: ['.salary', 'span[class*="salary"]'],
+            regexFallback: '\\d+-\\d+万(?:·\\d+薪)?|\\d+-\\d+元/天'
+          },
+          description: ['.job-dd-box', '.job-intro', '.job-description', '[class*="job-intro"]'],
+          jobTags: ['.job-properties span', '.job-intro-tags span', '.tag-box span']
+        }
+      },
+      list: {
+        urlPattern: '/zhaopin/',
+        cardSelector: '.job-card-pc-container, [class*="job-card-pc-container"]',
+        cardIdExtractor: {
+          attrName: 'data-job-id',
+          regex: '(.*)'
+        }
+      }
+    }
+  }
+];

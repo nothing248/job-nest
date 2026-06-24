@@ -1,0 +1,17 @@
+# Set default behavior to automatic text detection
+* text=auto
+
+# Normalize line endings to LF for source files
+*.ts text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.yml text eol=lf
+
+# Denote binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
