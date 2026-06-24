@@ -62,6 +62,10 @@
 │   ├── utils/               # 环形日志存储器组件 ( Logger )
 │   ├── main.ts              # 脚本主入口、原型防检测劫持层
 │   └── scratch_test.ts      # 包含 25 项断言测试的 Fake DOM 单元测试套件
+├── .editorconfig            # 编辑器代码风格统一配置
+├── .gitattributes           # Git 文件属性（统一换行符等）配置
+├── .gitignore               # Git 忽略文件规则配置
+├── LICENSE                  # MIT 开源许可证
 ├── vite.config.ts           # 打包元数据头配置
 └── tsconfig.json            # 严格 TS 校验规则
 ```
