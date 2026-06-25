@@ -10,6 +10,24 @@ interface DetailParseResult {
   jobTags?: string[];
 }
 
+// 过滤元素内部的 style 和 script 标签，提取干净的纯文本
+function getCleanTextContent(el: HTMLElement | null): string {
+  if (!el) return '';
+  
+  if (typeof el.cloneNode === 'function') {
+    try {
+      const clone = el.cloneNode(true) as HTMLElement;
+      const removeList = clone.querySelectorAll('style, script');
+      removeList.forEach(s => s.remove());
+      return clone.textContent?.trim() || '';
+    } catch (e) {
+      // 容错退避
+    }
+  }
+  
+  return el.textContent?.trim() || '';
+}
+
 // 模糊属性匹配辅助函数
 function fuzzyQuerySelector(root: Document | HTMLElement, keyword: string, tags: string[]): HTMLElement | null {
   for (const tag of tags) {
@@ -138,9 +156,12 @@ export const Parser = {
     if (parsers.description) {
       for (const selector of parsers.description) {
         const el = root.querySelector(selector);
-        if (el && el.textContent?.trim()) {
-          description = el.textContent.trim();
-          break;
+        if (el) {
+          const cleanText = getCleanTextContent(el as HTMLElement);
+          if (cleanText) {
+            description = cleanText;
+            break;
+          }
         }
       }
     }
@@ -150,7 +171,7 @@ export const Parser = {
                      || fuzzyQuerySelector(root, 'desc', ['div', 'section', 'article'])
                      || fuzzyQuerySelector(root, 'intro', ['div', 'section', 'article']);
       if (fuzzyEl) {
-        description = fuzzyEl.textContent!.trim();
+        description = getCleanTextContent(fuzzyEl as HTMLElement);
       }
     }
 
@@ -166,8 +187,13 @@ export const Parser = {
           const elements = root.querySelectorAll(selector);
           elements.forEach(el => {
             const txt = el.textContent?.trim();
-            if (txt && !jobTags.includes(txt)) {
-              jobTags.push(txt.substring(0, 20));
+            if (txt) {
+              const splitTags = txt.split(/[\s,，|/、\u2022·]+/).map(t => t.trim()).filter(Boolean);
+              splitTags.forEach(t => {
+                if (t && !jobTags.includes(t)) {
+                  jobTags.push(t.substring(0, 20));
+                }
+              });
             }
           });
         } catch (e) {
@@ -181,8 +207,13 @@ export const Parser = {
         const fuzzyElements = root.querySelectorAll('[class*="tag-list" i] span, [class*="job-tags" i] span, [class*="properties" i] span');
         fuzzyElements.forEach(el => {
           const txt = el.textContent?.trim();
-          if (txt && !jobTags.includes(txt) && txt.length <= 15) {
-            jobTags.push(txt.substring(0, 20));
+          if (txt) {
+            const splitTags = txt.split(/[\s,，|/、\u2022·]+/).map(t => t.trim()).filter(Boolean);
+            splitTags.forEach(t => {
+              if (t && !jobTags.includes(t) && t.length <= 15) {
+                jobTags.push(t.substring(0, 20));
+              }
+            });
           }
         });
       } catch (e) {
@@ -236,5 +267,20 @@ export const Parser = {
     }
 
     return rawValue;
+  },
+
+  // 获取最外层的卡片容器，过滤掉嵌套在其他卡片容器内部的节点
+  getTopLevelCards(cardSelector: string, root: Document | HTMLElement = document): HTMLElement[] {
+    const allCards = Array.from(root.querySelectorAll(cardSelector)) as HTMLElement[];
+    return allCards.filter(card => {
+      let parent = card.parentElement;
+      while (parent) {
+        if (allCards.includes(parent as HTMLElement)) {
+          return false;
+        }
+        parent = parent.parentElement;
+      }
+      return true;
+    });
   }
 };

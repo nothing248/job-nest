@@ -15,14 +15,14 @@ let currentConfigs: SiteConfig[] = [];
 // 启动引擎
 export function startEngine(configs: SiteConfig[]): void {
   currentConfigs = configs;
-  
+
   // 1. 初次路由判定
   runRouteCheck();
-  
+
   // 2. 监听浏览器前进后退、哈希改变等
   window.addEventListener('popstate', runRouteCheck);
   window.addEventListener('hashchange', runRouteCheck);
-  
+
   // 3. SPA 页面下，部分跳转不触发上述事件，使用 interval 脏检查 URL 变化
   if (urlCheckInterval) {
     clearInterval(urlCheckInterval);
@@ -43,7 +43,7 @@ export function startEngine(configs: SiteConfig[]): void {
 function runRouteCheck(): void {
   const url = window.location.href;
   const hostname = window.location.hostname;
-  
+
   // 1. 查找匹配平台的配置
   const config = currentConfigs.find(cfg => {
     return cfg.domains.some(domain => {
@@ -116,7 +116,7 @@ function handleDetailPage(platformKey: string, detailConfig: NonNullable<SiteCon
     if (!detailRegex.test(window.location.href)) return;
 
     const result = Parser.parseDetailPage(detailConfig.parsers, window.location.href, document);
-    
+
     // 如果 jobId 或 title 没拿到，说明 DOM 树还在渲染或加载中，执行退避重试
     if (!result.jobId || !result.title) {
       if (retryCount < maxRetries) {
@@ -147,7 +147,7 @@ function injectDetailPagePanel(
   removePanelFromDom(); // 确保清理旧面板
 
   const panel = document.createElement(PANEL_TAG_NAME) as JobNestPanel;
-  
+
   // 1. 尝试配置的目标注入点
   let injected = false;
   const injection = detailConfig.injection;
@@ -228,17 +228,14 @@ function handleListPage(platformKey: string, listConfig: NonNullable<SiteConfig[
 
 // 扫描列表页的职位卡片
 function scanListCards(platformKey: string, listConfig: NonNullable<SiteConfig['pages']['list']>): void {
-  const cardSelector = listConfig.cardSelector;
-  const cards = document.querySelectorAll(cardSelector);
+  const cards = Parser.getTopLevelCards(listConfig.cardSelector);
 
-  cards.forEach(card => {
-    const cardEl = card as HTMLElement;
-    
+  cards.forEach(cardEl => {
     // 跳过已经处理过的卡片，以节省性能
     if (cardEl.hasAttribute(HASHED_CLASSES.processedAttribute)) {
       return;
     }
-    
+
     // 标记卡片已扫描
     cardEl.setAttribute(HASHED_CLASSES.processedAttribute, 'true');
 
@@ -247,7 +244,7 @@ function scanListCards(platformKey: string, listConfig: NonNullable<SiteConfig['
     if (!jobId) return;
 
     const globalId = `${platformKey}_${jobId}`;
-    
+
     // 在卡片上打上自定义属性，方便后续 jp-record-changed 全局同步时查找
     cardEl.setAttribute('data-jp-global-id', globalId);
 
@@ -269,17 +266,23 @@ function cleanupListObserver(): void {
 
 // 寻找列表页中处于 active 激活状态的卡片
 function findActiveCard(cardSelector: string): HTMLElement | null {
-  const cards = document.querySelectorAll(cardSelector);
-  for (const card of cards) {
-    const cardEl = card as HTMLElement;
-    const hasActive = cardEl.classList.contains('active') || 
-                      Array.from(cardEl.classList).some(cls => cls.includes('active')) ||
-                      cardEl.getAttribute('class')?.includes('active');
+  const cards = Parser.getTopLevelCards(cardSelector);
+  for (const cardEl of cards) {
+    const hasActive = cardEl.classList.contains('active') ||
+      Array.from(cardEl.classList).some(cls => cls.includes('active')) ||
+      cardEl.getAttribute('class')?.includes('active');
     if (hasActive) {
       return cardEl;
     }
   }
   return null;
+}
+
+// 判定职务描述是否为无效/占位用数据（如加载中、加载失败、重新加载等）
+function isInvalidDescription(desc?: string): boolean {
+  if (!desc || desc.trim().length === 0) return true;
+  const invalidKeywords = ['加载中', '加载失败', '重新加载', '正在加载', '数据读取', '网络错误', '点击重试', '请稍后', 'loading', '尊享0大特权提升求职效率'];
+  return invalidKeywords.some(keyword => desc.includes(keyword));
 }
 
 // 检查列表页右侧详情预览的存在性，并更新挂载随手记面板
@@ -342,7 +345,7 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
         parsedData.company = cardResult.company || previewResult.company || '';
         parsedData.salary = cardResult.salary || previewResult.salary || '';
         parsedData.description = cardResult.description || previewResult.description || '';
-        
+
         // 原始标签合并去重
         const tagsSet = new Set([...(cardResult.jobTags || []), ...(previewResult.jobTags || [])]);
         parsedData.jobTags = Array.from(tagsSet).slice(0, 15);
@@ -384,8 +387,10 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
         parsedData.jobTags = Array.from(tagsSet).slice(0, 15);
       }
 
-      // 如果发现职位标题或公司等关键信息为空（哪怕卡片和右侧也还没渲染出来，比如刚打开页面异步加载非常慢），则退避重试
-      if ((!parsedData.title || !parsedData.company) && retryCount < maxRetries) {
+      // 如果发现标题/公司为空，或者职务描述暂未加载（为空或包含错误占位符），且重试次数未用尽，则退避重试
+      const titleOrCompanyEmpty = !parsedData.title || !parsedData.company;
+      const descInvalid = isInvalidDescription(parsedData.description);
+      if ((titleOrCompanyEmpty || descInvalid) && retryCount < maxRetries) {
         retryCount++;
         setTimeout(tryParsePreview, 300);
         return;
@@ -396,6 +401,34 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
     }
 
     tryParsePreview();
+  } else {
+    // 已经挂载了面板且职位未切换。当 DOM 发生改变时，检查如果先前保存的 JD 依然无效，则同步尝试提取并补全更新
+    const localRecord = Storage.getJobRecord(globalId);
+    if (localRecord && isInvalidDescription(localRecord.description)) {
+      const platformConfig = currentConfigs.find(cfg => cfg.platformKey === platformKey);
+      const detailConfig = platformConfig?.pages.detail;
+      const activeParsers = previewConfig.parsers || detailConfig?.parsers;
+
+      if (activeParsers) {
+        const previewResult = Parser.parseDetailPage(activeParsers, window.location.href, triggerEl as HTMLElement);
+        if (previewResult.description && !isInvalidDescription(previewResult.description)) {
+          localRecord.description = previewResult.description;
+          if (previewResult.jobTags && previewResult.jobTags.length > 0) {
+            const tagsSet = new Set([...(localRecord.jobTags || []), ...previewResult.jobTags]);
+            localRecord.jobTags = Array.from(tagsSet).slice(0, 15);
+          }
+          Storage.saveJobRecord(localRecord);
+          existingPanel.initJob(jobId, platformKey, localRecord.title, localRecord.company, localRecord.salary, localRecord.description, localRecord.jobTags);
+        }
+      } else {
+        const previewDesc = triggerEl.querySelector('[class*="job-sec" i], [class*="detail" i], [class*="desc" i], [class*="intro" i]')?.textContent?.trim() || '';
+        if (previewDesc && !isInvalidDescription(previewDesc)) {
+          localRecord.description = previewDesc;
+          Storage.saveJobRecord(localRecord);
+          existingPanel.initJob(jobId, platformKey, localRecord.title, localRecord.company, localRecord.salary, localRecord.description, localRecord.jobTags);
+        }
+      }
+    }
   }
 }
 

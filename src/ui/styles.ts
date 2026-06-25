@@ -3,12 +3,12 @@ import { HASHED_CLASSES } from './hashes';
 // 注入到原页面 head 的全局样式（主要负责灰度化和列表卡片 Badge）
 export function injectGlobalStyles(): void {
   const css = `
-    .${HASHED_CLASSES.grayCard} {
+    [data-jp-gray="true"] {
       filter: grayscale(100%) !important;
       opacity: 0.55 !important;
       transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
     }
-    .${HASHED_CLASSES.grayCard}:hover {
+    [data-jp-gray="true"]:hover {
       filter: none !important;
       opacity: 1 !important;
     }

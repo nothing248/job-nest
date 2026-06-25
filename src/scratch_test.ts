@@ -6,14 +6,27 @@ import { SiteConfig } from './types';
 class FakeElement {
   public tagName: string;
   public className: string = '';
-  public textContent: string = '';
+  private _textContent: string = '';
   public attributes: Record<string, string> = {};
   public children: FakeElement[] = [];
   public nodeType: number = 1;
+  public parentElement: FakeElement | null = null;
+
+  get textContent(): string {
+    if (this.children.length === 0) {
+      return this._textContent;
+    }
+    return this.children.map(child => child.textContent).join('');
+  }
+
+  set textContent(val: string) {
+    this._textContent = val;
+    this.children = []; // 模拟真实 DOM 表现：写入 textContent 会清除该节点的所有子节点
+  }
 
   constructor(tagName: string, content: string = '') {
     this.tagName = tagName.toUpperCase();
-    this.textContent = content;
+    this._textContent = content;
   }
 
   setAttribute(name: string, value: string) {
@@ -28,7 +41,29 @@ class FakeElement {
   }
 
   appendChild(el: FakeElement) {
+    el.parentElement = this;
     this.children.push(el);
+  }
+
+  cloneNode(deep: boolean): FakeElement {
+    const clone = new FakeElement(this.tagName, this._textContent);
+    clone.className = this.className;
+    clone.attributes = { ...this.attributes };
+    if (deep) {
+      this.children.forEach(child => {
+        clone.appendChild(child.cloneNode(true));
+      });
+    }
+    return clone;
+  }
+
+  remove() {
+    if (this.parentElement) {
+      const idx = this.parentElement.children.indexOf(this);
+      if (idx !== -1) {
+        this.parentElement.children.splice(idx, 1);
+      }
+    }
   }
 
   querySelector(selector: string): FakeElement | null {
@@ -53,10 +88,16 @@ class FakeElement {
         return hasKeyword && matchesTag;
       }
       
-      // c. [data-jid] 属性存在匹配
+      // c. [data-jid] 属性存在或属性值匹配
       if (cleanSel.startsWith('[') && cleanSel.endsWith(']')) {
-        const attr = cleanSel.slice(1, -1);
-        return attr in el.attributes;
+        const attrExpr = cleanSel.slice(1, -1);
+        if (attrExpr.includes('=')) {
+          const [attr, val] = attrExpr.split('=');
+          const cleanVal = val.replace(/['"]/g, '').trim();
+          const cleanAttr = attr.trim();
+          return el.attributes[cleanAttr] === cleanVal;
+        }
+        return attrExpr in el.attributes;
       }
 
       // d. h1.job-title 标签+类匹配
@@ -116,8 +157,14 @@ class FakeElement {
           return hasKeyword && matchesTag;
         }
         if (s.startsWith('[') && s.endsWith(']')) {
-          const attr = s.slice(1, -1);
-          return attr in el.attributes;
+          const attrExpr = s.slice(1, -1);
+          if (attrExpr.includes('=')) {
+            const [attr, val] = attrExpr.split('=');
+            const cleanVal = val.replace(/['"]/g, '').trim();
+            const cleanAttr = attr.trim();
+            return el.attributes[cleanAttr] === cleanVal;
+          }
+          return attrExpr in el.attributes;
         }
         if (s.includes('.')) {
           const [tag, cls] = s.split('.');
@@ -297,7 +344,7 @@ function runTests() {
     jobTagsContainer.setAttribute('class', 'job-tags-container-xyz');
     const fTag1 = new FakeElement('span', '3-5年');
     const fTag2 = new FakeElement('span', '硕士');
-    const fTag3 = new FakeElement('span', 'Python');
+    const fTag3 = new FakeElement('span', 'Python | 算法 / AI');
     jobTagsContainer.appendChild(fTag1);
     jobTagsContainer.appendChild(fTag2);
     jobTagsContainer.appendChild(fTag3);
@@ -313,7 +360,7 @@ function runTests() {
     assert(result.title === '算法专家', '类名混淆时通过模糊匹配 [class*="title" i] 提取 Title 应成功');
     assert(result.company === '阿里巴巴', '公司名精准类名失效时通过模糊匹配 [class*="brand" i] 提取 Company 应成功');
     assert(result.description === '岗位职责：大数据开发', '职位描述失效时通过模糊匹配 [class*="desc" i] 提取 Description 应成功');
-    assert(Array.isArray(result.jobTags) && result.jobTags.join(',') === '3-5年,硕士,Python', '标签名失效时通过模糊匹配 [class*="job-tags" i] span 提取 jobTags 应成功');
+    assert(Array.isArray(result.jobTags) && result.jobTags.join(',') === '3-5年,硕士,Python,算法,AI', '标签名失效时通过模糊匹配 [class*="job-tags" i] span 提取且正则分割 jobTags 应成功');
   } catch (e) {
     console.error('测试 2 发生未捕获异常:', e);
     passed = false;
@@ -507,6 +554,66 @@ function runTests() {
     assert(mergedResult.jobTags.join(',') === '5-10年,本科,Go', '双源合并：标签成功去重合并');
   } catch (e) {
     console.error('测试 6 发生未捕获异常:', e);
+    passed = false;
+  }
+
+  // --- 测试 7: 列表页卡片嵌套过滤测试 ---
+  try {
+    const doc = new FakeDocument();
+    
+    // 构造嵌套卡片 DOM: 外层 li (class="job-card-box")，内层 div (class="job-card-wrap")
+    const outerLi = new FakeElement('li');
+    outerLi.className = 'job-card-box';
+    
+    const innerDiv = new FakeElement('div');
+    innerDiv.className = 'job-card-wrap';
+    
+    outerLi.appendChild(innerDiv);
+    doc.body.appendChild(outerLi);
+
+    // cardSelector 同时包含这两个类，会匹配出 li 和 div
+    const selector = '.job-card-wrap, li.job-card-box';
+
+    // 运行最外层卡片过滤方法
+    const topLevelCards = Parser.getTopLevelCards(selector, doc as any);
+
+    assert(topLevelCards.length === 1, '嵌套过滤：应只返回 1 个最外层卡片（外层 li 和内层 div 存在嵌套）');
+    assert(topLevelCards[0] === (outerLi as any), '嵌套过滤：返回的卡片应为外层的 LI 元素');
+  } catch (e) {
+    console.error('测试 7 发生未捕获异常:', e);
+    passed = false;
+  }
+
+  // --- 测试 8: 职务描述脏样式和脚本标签净化过滤测试 ---
+  try {
+    const doc = new FakeDocument();
+    
+    // 构造一个含有 style 和 script 标签的 JD 详情 DOM
+    const detailBox = new FakeElement('div');
+    detailBox.className = 'job-sec-text';
+    
+    const textNode1 = new FakeElement('span', '负责前端开发与重构。');
+    const styleNode = new FakeElement('style', '.color { color: red; }');
+    const textNode2 = new FakeElement('span', '要求精通 TypeScript。');
+    const scriptNode = new FakeElement('script', 'console.log("xss");');
+    
+    detailBox.appendChild(textNode1);
+    detailBox.appendChild(styleNode);
+    detailBox.appendChild(textNode2);
+    detailBox.appendChild(scriptNode);
+    doc.body.appendChild(detailBox);
+
+    const result = Parser.parseDetailPage(
+      mockDetailConfig.parsers,
+      'https://www.zhipin.com/job_detail/style_999.html',
+      doc as any
+    );
+
+    // 应该只保留 span 标签的内容，而彻底剔除 style 和 script 内的文本
+    const expectedDesc = '负责前端开发与重构。要求精通 TypeScript。';
+    assert(result.description === expectedDesc, `样式过滤：提取到的 JD 文本应剔除 style/script（实际为 "${result.description}"）`);
+  } catch (e) {
+    console.error('测试 8 发生未捕获异常:', e);
     passed = false;
   }
 

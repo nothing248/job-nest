@@ -25,7 +25,7 @@ export const HASHED_CLASSES = {
   badgeText: generateHashClass('jp_badge_text'),
   
   // 列表标记属性（防重复处理）
-  processedAttribute: `data-jp-processed-${Math.random().toString(36).substring(2, 7)}`,
+  processedAttribute: 'data-jp-processed',
   
   // 日志查看器
   logDrawer: generateHashClass('jp_log_drawer'),

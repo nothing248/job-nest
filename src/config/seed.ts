@@ -32,7 +32,7 @@ export const DEFAULT_SITE_CONFIGS: SiteConfig[] = [
         cardSelector: '.job-card-wrap, li[class*="job-card-box"]',
         cardIdExtractor: {
           attrName: 'href',
-          regex: '/job_detail/([^/]+)'
+          regex: '/job_detail/([^/]+)\\.html'
         },
         detailPreview: {
           triggerSelector: '.job-detail-container',
@@ -51,8 +51,8 @@ export const DEFAULT_SITE_CONFIGS: SiteConfig[] = [
               selectors: ['.job-salary', '.salary', 'span[class*="salary"]'],
               regexFallback: '\\d+-\\d+K(?:·\\d+薪)?'
             },
-            description: ['.desc', '.job-sec-text', '.job-detail .text', '[class*="job-sec"]'],
-            jobTags: ['.job-label-list', '.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span']
+            description: ['.job-detail-body .desc', '.job-sec-text', '.job-detail .text', '[class*="job-sec"]'],
+            jobTags: ['.job-label-list li', '.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span']
           }
         }
       }
