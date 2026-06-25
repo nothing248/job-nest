@@ -8,6 +8,7 @@ interface DetailParseResult {
   salary: string;
   description?: string;
   jobTags?: string[];
+  address?: string;
 }
 
 // 过滤元素内部的 style 和 script 标签，提取干净的纯文本
@@ -221,13 +222,36 @@ export const Parser = {
       }
     }
     const finalJobTags = jobTags.slice(0, 15);
+
+    // 7. 解析 Address (公司/工作地址)
+    let address = '';
+    if (parsers.address) {
+      for (const selector of parsers.address) {
+        const el = root.querySelector(selector);
+        if (el && el.textContent?.trim()) {
+          address = el.textContent.trim();
+          break;
+        }
+      }
+    }
+    // 模糊兜底
+    if (!address) {
+      const fuzzyEl = fuzzyQuerySelector(root, 'address', ['div', 'span', 'p'])
+                     || fuzzyQuerySelector(root, 'location', ['div', 'span', 'p']);
+      if (fuzzyEl) {
+        address = fuzzyEl.textContent!.trim();
+      }
+    }
+    if (address) {
+      address = address.replace(/\s+/g, ' ').trim();
+    }
     
     // 清理一下职位和公司名可能含有的多余换行符、空格
     title = title.replace(/\s+/g, ' ');
     company = company.replace(/\s+/g, ' ');
     salary = salary.replace(/\s+/g, ' ');
 
-    return { jobId, title, company, salary, description, jobTags: finalJobTags };
+    return { jobId, title, company, salary, description, jobTags: finalJobTags, address };
   },
 
   // 提取列表页卡片的 ID

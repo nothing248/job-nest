@@ -49,6 +49,11 @@
             ".job-banner .tag-list span",
             ".job-sec-text .job-tag-list li",
             ".job-detail .job-tags span"
+          ],
+          "address": [
+            ".location-address",
+            ".job-address .address-info",
+            ".job-location"
           ]
         }
       },
@@ -81,6 +86,7 @@
               "h1[class*=\"name\"]"
             ],
             "company": [
+              ".boss-name",
               ".boss-info-attr",
               ".brand-name",
               ".company-info .name",
@@ -106,6 +112,11 @@
               ".job-banner .tag-list span",
               ".job-sec-text .job-tag-list li",
               ".job-detail .job-tags span"
+            ],
+            "address": [
+              ".location-address",
+              ".job-address .address-info",
+              ".job-location"
             ]
           }
         }
@@ -161,6 +172,10 @@
             ".job-properties span",
             ".job-intro-tags span",
             ".tag-box span"
+          ],
+          "address": [
+            ".job-address",
+            ".job-location"
           ]
         }
       },

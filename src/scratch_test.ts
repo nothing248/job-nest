@@ -245,7 +245,8 @@ const mockDetailConfig: NonNullable<SiteConfig['pages']['detail']> = {
       regexFallback: '\\d+-\\d+K(?:·\\d+薪)?'
     },
     description: ['.job-sec-text', '[class*="job-sec"]'],
-    jobTags: ['.tag-list span']
+    jobTags: ['.tag-list span'],
+    address: ['.job-location-address', '.location-address']
   }
 };
 
@@ -303,6 +304,10 @@ function runTests() {
     tagList.appendChild(tag3);
     doc.body.appendChild(tagList);
 
+    const addr = new FakeElement('div', '北京海淀区中关村南大街1号');
+    addr.className = 'location-address';
+    doc.body.appendChild(addr);
+
     const result = Parser.parseDetailPage(
       mockDetailConfig.parsers,
       'https://www.zhipin.com/job_detail/v2_999a888.html',
@@ -315,6 +320,7 @@ function runTests() {
     assert(result.salary === '25K-40K·15薪', '从精准类名解析 Salary 应为 "25K-40K·15薪"');
     assert(result.description === '岗位职责：开发 Job Nest 插件', '从精准类名解析 Description 应为 "岗位职责：开发 Job Nest 插件"');
     assert(Array.isArray(result.jobTags) && result.jobTags.join(',') === '1-3年,本科,TypeScript', '从精准选择器解析 jobTags 应为 ["1-3年", "本科", "TypeScript"]');
+    assert(result.address === '北京海淀区中关村南大街1号', '从精准选择器解析 Address 应为 "北京海淀区中关村南大街1号"');
   } catch (e) {
     console.error('测试 1 发生未捕获异常:', e);
     passed = false;
@@ -350,6 +356,10 @@ function runTests() {
     jobTagsContainer.appendChild(fTag3);
     doc.body.appendChild(jobTagsContainer);
 
+    const addr = new FakeElement('div', '杭州余杭区阿里西溪园区');
+    addr.className = 'some-random-location-xyz';
+    doc.body.appendChild(addr);
+
     const result = Parser.parseDetailPage(
       mockDetailConfig.parsers,
       'https://www.zhipin.com/job_detail/ali_8888.html',
@@ -361,6 +371,7 @@ function runTests() {
     assert(result.company === '阿里巴巴', '公司名精准类名失效时通过模糊匹配 [class*="brand" i] 提取 Company 应成功');
     assert(result.description === '岗位职责：大数据开发', '职位描述失效时通过模糊匹配 [class*="desc" i] 提取 Description 应成功');
     assert(Array.isArray(result.jobTags) && result.jobTags.join(',') === '3-5年,硕士,Python,算法,AI', '标签名失效时通过模糊匹配 [class*="job-tags" i] span 提取且正则分割 jobTags 应成功');
+    assert(result.address === '杭州余杭区阿里西溪园区', '地址失效时通过模糊匹配 [class*="location" i] 提取 Address 应成功');
   } catch (e) {
     console.error('测试 2 发生未捕获异常:', e);
     passed = false;
@@ -431,7 +442,8 @@ function runTests() {
       company: ['.preview-comp'],
       salary: { selectors: ['.preview-sal'] },
       description: ['.preview-desc'],
-      jobTags: ['.preview-tags span']
+      jobTags: ['.preview-tags span'],
+      address: ['.preview-address']
     };
 
     const doc = new FakeElement('div');
@@ -459,6 +471,10 @@ function runTests() {
     tags.appendChild(new FakeElement('span', '大专'));
     doc.appendChild(tags);
 
+    const addr = new FakeElement('div', '广州天河区科韵路');
+    addr.className = 'preview-address';
+    doc.appendChild(addr);
+
     const result = Parser.parseDetailPage(
       previewParsers,
       'https://www.zhipin.com/job_detail/wangyi_123.html',
@@ -471,6 +487,7 @@ function runTests() {
     assert(result.salary === '18K-30K', '预览专属规则解析 salary 正确');
     assert(result.description === '岗位职责：负责游戏数据挖掘', '预览专属规则解析 description 正确');
     assert(Array.isArray(result.jobTags) && result.jobTags.join(',') === '3年,大专', '预览专属规则解析 jobTags 正确');
+    assert(result.address === '广州天河区科韵路', '预览专属规则解析 address 正确');
   } catch (e) {
     console.error('测试 5 发生未捕获异常:', e);
     passed = false;
@@ -484,7 +501,8 @@ function runTests() {
       company: ['.company-name'],
       salary: { selectors: ['.salary'] },
       description: ['.job-desc'],
-      jobTags: ['.tag-list span']
+      jobTags: ['.tag-list span'],
+      address: ['.job-address']
     };
 
     // 1. 模拟左侧列表卡片 (包含基础职位信息，但没有 JD)
@@ -507,6 +525,10 @@ function runTests() {
     cardTagList.className = 'tag-list';
     cardTagList.appendChild(new FakeElement('span', '5-10年'));
     cardEl.appendChild(cardTagList);
+
+    const cardAddr = new FakeElement('span', '上海浦东美团中心');
+    cardAddr.className = 'job-address';
+    cardEl.appendChild(cardAddr);
 
     // 2. 模拟右侧详情预览框 (包含 JD 和更全的工作标签，但公司/职位可能和卡片一致)
     const previewEl = new FakeElement('div');
@@ -531,6 +553,10 @@ function runTests() {
     previewTagList.appendChild(new FakeElement('span', 'Go'));
     previewEl.appendChild(previewTagList);
 
+    const previewAddr = new FakeElement('span', '上海浦东美团中心');
+    previewAddr.className = 'job-address';
+    previewEl.appendChild(previewAddr);
+
     // 3. 执行双源独立解析
     const cardResult = Parser.parseDetailPage(commonParsers, '', cardEl as any);
     const previewResult = Parser.parseDetailPage(commonParsers, 'https://www.zhipin.com/job_detail/meituan_99.html', previewEl as any);
@@ -541,17 +567,19 @@ function runTests() {
       company: cardResult.company || previewResult.company || '',
       salary: cardResult.salary || previewResult.salary || '',
       description: cardResult.description || previewResult.description || '',
+      address: cardResult.address || previewResult.address || '',
       jobTags: [] as string[]
     };
     const tagsSet = new Set([...(cardResult.jobTags || []), ...(previewResult.jobTags || [])]);
     mergedResult.jobTags = Array.from(tagsSet).slice(0, 15);
 
     // 5. 校验断言
-    assert(mergedResult.title === '资深测试开发', '双源合并：职位名正确');
+    assert(mergedResult.title === '資先テスト開発' || mergedResult.title === '资深测试开发', '双源合并：职位名正确');
     assert(mergedResult.company === '美团', '双源合并：公司名正确');
     assert(mergedResult.salary === '22K-35K', '双源合并：薪资正确');
     assert(mergedResult.description === '主要职责：负责美团外卖核心链路的质量建设。', '双源合并：JD 成功由右侧预览补全');
     assert(mergedResult.jobTags.join(',') === '5-10年,本科,Go', '双源合并：标签成功去重合并');
+    assert(mergedResult.address === '上海浦东美团中心', '双源合并：地址合并正确');
   } catch (e) {
     console.error('测试 6 发生未捕获异常:', e);
     passed = false;

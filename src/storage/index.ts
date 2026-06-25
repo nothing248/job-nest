@@ -132,7 +132,7 @@ export const Storage = {
   // 导出为 CSV 字符串
   exportToCsv(): string {
     const records = this.getAllJobRecords();
-    const headers = ['jobGlobalId', 'platform', 'title', 'company', 'salary', 'description', 'jobTags', 'viewedAt', 'status', 'tags', 'note'];
+    const headers = ['jobGlobalId', 'platform', 'title', 'company', 'salary', 'description', 'jobTags', 'viewedAt', 'status', 'tags', 'note', 'address'];
     
     const escapeCsvValue = (val: unknown): string => {
       if (val === null || val === undefined) return '';
@@ -161,7 +161,8 @@ export const Storage = {
         record.viewedAt,
         record.status,
         record.tags,
-        record.note
+        record.note,
+        record.address || ''
       ];
       csvRows.push(values.map(escapeCsvValue).join(','));
     }
@@ -194,7 +195,8 @@ export const Storage = {
             viewedAt: String(item.viewedAt || new Date().toISOString()),
             status: item.status as JobRecord['status'],
             tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
-            note: String(item.note || '')
+            note: String(item.note || ''),
+            address: item.address ? String(item.address) : ''
           };
           map[record.jobGlobalId] = record;
           importedCount++;

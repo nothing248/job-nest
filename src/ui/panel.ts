@@ -23,7 +23,7 @@ export class JobNestPanel extends HTMLElement {
   }
 
   // 初始化职位并绑定数据
-  initJob(jobId: string, platform: string, title: string, company: string, salary: string, description?: string, jobTags?: string[]): void {
+  initJob(jobId: string, platform: string, title: string, company: string, salary: string, description?: string, jobTags?: string[], address?: string): void {
     const globalId = `${platform}_${jobId}`;
     this.setAttribute('data-job-global-id', globalId);
     const existing = Storage.getJobRecord(globalId);
@@ -39,6 +39,9 @@ export class JobNestPanel extends HTMLElement {
       if (jobTags && jobTags.length > 0) {
         this.record.jobTags = jobTags;
       }
+      if (address) {
+        this.record.address = address;
+      }
       this.record.viewedAt = new Date().toISOString();
       Storage.saveJobRecord(this.record);
     } else {
@@ -50,6 +53,7 @@ export class JobNestPanel extends HTMLElement {
         salary: salary || '暂无薪资',
         description: description || '',
         jobTags: jobTags || [],
+        address: address || '',
         viewedAt: new Date().toISOString(),
         status: 'viewed',
         tags: [],
@@ -89,6 +93,11 @@ export class JobNestPanel extends HTMLElement {
               ${escapeHtml(record.company)} · ${escapeHtml(record.title)} · 
               <span style="color: #f43f5e; font-weight: bold;">${escapeHtml(record.salary)}</span>
             </div>
+            ${record.address ? `
+              <div class="jp-job-address" style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 2px;">
+                📍 <span>${escapeHtml(record.address)}</span>
+              </div>
+            ` : ''}
             ${record.jobTags && record.jobTags.length > 0 ? `
               <div class="jp-job-original-tags">
                 ${record.jobTags.map(t => `<span class="jp-job-original-tag">${escapeHtml(t)}</span>`).join('')}

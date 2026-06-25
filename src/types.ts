@@ -11,6 +11,7 @@ export interface DetailParsers {
   };
   description?: string[];
   jobTags?: string[];
+  address?: string[];
 }
 
 export interface SiteConfig {
@@ -59,4 +60,5 @@ export interface JobRecord {
   status: JobStatus;
   tags: string[];
   note: string;
+  address?: string;
 }

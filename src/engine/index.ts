@@ -142,7 +142,7 @@ function handleDetailPage(platformKey: string, detailConfig: NonNullable<SiteCon
 function injectDetailPagePanel(
   platformKey: string,
   detailConfig: NonNullable<SiteConfig['pages']['detail']>,
-  jobData: { jobId: string; title: string; company: string; salary: string; description?: string; jobTags?: string[] }
+  jobData: { jobId: string; title: string; company: string; salary: string; description?: string; jobTags?: string[]; address?: string }
 ): void {
   removePanelFromDom(); // 确保清理旧面板
 
@@ -183,7 +183,7 @@ function injectDetailPagePanel(
   }
 
   // 3. 初始化面板数据
-  panel.initJob(jobData.jobId, platformKey, jobData.title, jobData.company, jobData.salary, jobData.description, jobData.jobTags);
+  panel.initJob(jobData.jobId, platformKey, jobData.title, jobData.company, jobData.salary, jobData.description, jobData.jobTags, jobData.address);
 }
 
 function removePanelFromDom(): void {
@@ -347,7 +347,7 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
       const currentGlobalId = `${platformKey}_${currentJobId}`;
       if (currentGlobalId !== globalId) return; // 已经发生卡片切换，直接静默退出本次重试
 
-      let parsedData = { jobId, title: '', company: '', salary: '', description: '', jobTags: [] as string[] };
+      let parsedData = { jobId, title: '', company: '', salary: '', description: '', jobTags: [] as string[], address: '' };
 
       if (activeParsers) {
         // A. 优先从左侧激活卡片节点中提取职位基本数据（无网络延时）
@@ -361,6 +361,7 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
         parsedData.company = cardResult.company || previewResult.company || '';
         parsedData.salary = cardResult.salary || previewResult.salary || '';
         parsedData.description = cardResult.description || previewResult.description || '';
+        parsedData.address = cardResult.address || previewResult.address || '';
 
         // 原始标签合并去重
         const tagsSet = new Set([...(cardResult.jobTags || []), ...(previewResult.jobTags || [])]);
@@ -371,6 +372,7 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
         const getFuzzyCompany = (root: HTMLElement) => root.querySelector('[class*="company" i], [class*="brand" i]')?.textContent?.trim() || '';
         const getFuzzySalary = (root: HTMLElement) => root.querySelector('[class*="salary" i]')?.textContent?.trim() || '';
         const getFuzzyDesc = (root: HTMLElement) => root.querySelector('[class*="job-sec" i], [class*="detail" i], [class*="desc" i], [class*="intro" i]')?.textContent?.trim() || '';
+        const getFuzzyAddress = (root: HTMLElement) => root.querySelector('[class*="address" i], [class*="location" i]')?.textContent?.trim() || '';
         const getFuzzyTags = (root: HTMLElement) => {
           const tagSpans = root.querySelectorAll('[class*="tag" i] span, [class*="properties" i] span');
           const tags: string[] = [];
@@ -386,18 +388,21 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
         const cardTitle = getFuzzyTitle(currentActiveCard);
         const cardCompany = getFuzzyCompany(currentActiveCard);
         const cardSalary = getFuzzySalary(currentActiveCard);
+        const cardAddress = getFuzzyAddress(currentActiveCard);
         const cardTags = getFuzzyTags(currentActiveCard);
 
         const previewTitle = getFuzzyTitle(currentTriggerEl as HTMLElement);
         const previewCompany = getFuzzyCompany(currentTriggerEl as HTMLElement);
         const previewSalary = getFuzzySalary(currentTriggerEl as HTMLElement);
         const previewDesc = getFuzzyDesc(currentTriggerEl as HTMLElement);
+        const previewAddress = getFuzzyAddress(currentTriggerEl as HTMLElement);
         const previewTags = getFuzzyTags(currentTriggerEl as HTMLElement);
 
         parsedData.title = cardTitle || previewTitle;
         parsedData.company = cardCompany || previewCompany;
         parsedData.salary = cardSalary || previewSalary;
         parsedData.description = previewDesc;
+        parsedData.address = cardAddress || previewAddress;
 
         const tagsSet = new Set([...cardTags, ...previewTags]);
         parsedData.jobTags = Array.from(tagsSet).slice(0, 15);
@@ -427,21 +432,39 @@ function checkDetailPreview(platformKey: string, listConfig: NonNullable<SiteCon
 
       if (activeParsers) {
         const previewResult = Parser.parseDetailPage(activeParsers, window.location.href, triggerEl as HTMLElement);
+        let updated = false;
         if (previewResult.description && !isInvalidDescription(previewResult.description)) {
           localRecord.description = previewResult.description;
-          if (previewResult.jobTags && previewResult.jobTags.length > 0) {
-            const tagsSet = new Set([...(localRecord.jobTags || []), ...previewResult.jobTags]);
-            localRecord.jobTags = Array.from(tagsSet).slice(0, 15);
-          }
+          updated = true;
+        }
+        if (previewResult.address && !localRecord.address) {
+          localRecord.address = previewResult.address;
+          updated = true;
+        }
+        if (previewResult.jobTags && previewResult.jobTags.length > 0) {
+          const tagsSet = new Set([...(localRecord.jobTags || []), ...previewResult.jobTags]);
+          localRecord.jobTags = Array.from(tagsSet).slice(0, 15);
+          updated = true;
+        }
+        if (updated) {
           Storage.saveJobRecord(localRecord);
-          existingPanel.initJob(jobId, platformKey, localRecord.title, localRecord.company, localRecord.salary, localRecord.description, localRecord.jobTags);
+          existingPanel.initJob(jobId, platformKey, localRecord.title, localRecord.company, localRecord.salary, localRecord.description, localRecord.jobTags, localRecord.address);
         }
       } else {
         const previewDesc = triggerEl.querySelector('[class*="job-sec" i], [class*="detail" i], [class*="desc" i], [class*="intro" i]')?.textContent?.trim() || '';
+        const previewAddress = triggerEl.querySelector('[class*="address" i], [class*="location" i]')?.textContent?.trim() || '';
+        let updated = false;
         if (previewDesc && !isInvalidDescription(previewDesc)) {
           localRecord.description = previewDesc;
+          updated = true;
+        }
+        if (previewAddress && !localRecord.address) {
+          localRecord.address = previewAddress.replace(/\s+/g, ' ').trim();
+          updated = true;
+        }
+        if (updated) {
           Storage.saveJobRecord(localRecord);
-          existingPanel.initJob(jobId, platformKey, localRecord.title, localRecord.company, localRecord.salary, localRecord.description, localRecord.jobTags);
+          existingPanel.initJob(jobId, platformKey, localRecord.title, localRecord.company, localRecord.salary, localRecord.description, localRecord.jobTags, localRecord.address);
         }
       }
     }
@@ -452,7 +475,7 @@ function injectPreviewPanel(
   platformKey: string,
   previewConfig: NonNullable<NonNullable<SiteConfig['pages']['list']>['detailPreview']>,
   triggerEl: HTMLElement,
-  jobData: { jobId: string; title: string; company: string; salary: string; description?: string; jobTags?: string[] }
+  jobData: { jobId: string; title: string; company: string; salary: string; description?: string; jobTags?: string[]; address?: string }
 ): void {
   const existingPanel = triggerEl.querySelector(PANEL_TAG_NAME) as JobNestPanel | null;
   const targetGlobalId = `${platformKey}_${jobData.jobId}`;
@@ -461,7 +484,7 @@ function injectPreviewPanel(
   if (existingPanel) {
     const panelGlobalId = existingPanel.getAttribute('data-job-global-id');
     if (panelGlobalId === targetGlobalId) {
-      existingPanel.initJob(jobData.jobId, platformKey, jobData.title, jobData.company, jobData.salary, jobData.description, jobData.jobTags);
+      existingPanel.initJob(jobData.jobId, platformKey, jobData.title, jobData.company, jobData.salary, jobData.description, jobData.jobTags, jobData.address);
       return;
     }
     existingPanel.remove();
@@ -497,7 +520,7 @@ function injectPreviewPanel(
     document.body.appendChild(panel);
   }
 
-  panel.initJob(jobData.jobId, platformKey, jobData.title, jobData.company, jobData.salary, jobData.description, jobData.jobTags);
+  panel.initJob(jobData.jobId, platformKey, jobData.title, jobData.company, jobData.salary, jobData.description, jobData.jobTags, jobData.address);
 }
 
 // ------------------- 全局协同刷新逻辑 -------------------

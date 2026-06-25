@@ -24,7 +24,8 @@ export const DEFAULT_SITE_CONFIGS: SiteConfig[] = [
             regexFallback: '\\d+-\\d+K(?:·\\d+薪)?'
           },
           description: ['.job-sec-text', '.job-detail .text', '[class*="job-sec"]'],
-          jobTags: ['.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span']
+          jobTags: ['.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span'],
+          address: ['.location-address', '.job-address .address-info', '.job-location']
         }
       },
       list: {
@@ -46,13 +47,14 @@ export const DEFAULT_SITE_CONFIGS: SiteConfig[] = [
               fromDom: []
             },
             title: ['.job-name', '.name h1', 'h1.job-title', 'h1[class*="name"]'],
-            company: ['.boss-info-attr', '.brand-name', '.company-info .name', '.company-name', '.aside-company h1'],
+            company: ['.boss-name', '.boss-info-attr', '.brand-name', '.company-info .name', '.company-name', '.aside-company h1'],
             salary: {
               selectors: ['.job-salary', '.salary', 'span[class*="salary"]'],
               regexFallback: '\\d+-\\d+K(?:·\\d+薪)?'
             },
             description: ['.job-detail-body .desc', '.job-sec-text', '.job-detail .text', '[class*="job-sec"]'],
-            jobTags: ['.job-label-list li', '.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span']
+            jobTags: ['.job-label-list li', '.job-banner .tag-list span', '.job-sec-text .job-tag-list li', '.job-detail .job-tags span'],
+            address: ['.location-address', '.job-address .address-info', '.job-location']
           }
         }
       }
@@ -81,7 +83,8 @@ export const DEFAULT_SITE_CONFIGS: SiteConfig[] = [
             regexFallback: '\\d+-\\d+万(?:·\\d+薪)?|\\d+-\\d+元/天'
           },
           description: ['.job-dd-box', '.job-intro', '.job-description', '[class*="job-intro"]'],
-          jobTags: ['.job-properties span', '.job-intro-tags span', '.tag-box span']
+          jobTags: ['.job-properties span', '.job-intro-tags span', '.tag-box span'],
+          address: ['.job-address', '.job-location']
         }
       },
       list: {
