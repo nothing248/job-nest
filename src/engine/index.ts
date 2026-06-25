@@ -231,8 +231,24 @@ function scanListCards(platformKey: string, listConfig: NonNullable<SiteConfig['
   const cards = Parser.getTopLevelCards(listConfig.cardSelector);
 
   cards.forEach(cardEl => {
-    // 跳过已经处理过的卡片，以节省性能
-    if (cardEl.hasAttribute(HASHED_CLASSES.processedAttribute)) {
+    const hasProcessed = cardEl.hasAttribute(HASHED_CLASSES.processedAttribute);
+    const existingGlobalId = cardEl.getAttribute('data-jp-global-id');
+
+    if (hasProcessed && existingGlobalId) {
+      // 若卡片已处理，我们仅在 DOM 发生改变导致 Badge 或灰度属性被清除时，进行按需补偿重绘
+      const record = Storage.getJobRecord(existingGlobalId);
+      if (record) {
+        const hasBadgeEl = cardEl.querySelector('[data-jp-badge="true"]');
+        const hasRelativeCls = cardEl.classList.contains('jp-relative-card');
+        const needsBadge = record.status === 'saved' || record.status === 'applied' || (!!record.note && record.note.trim().length > 0);
+        
+        const isGray = cardEl.hasAttribute('data-jp-gray');
+        const needsGray = record.status === 'viewed' || record.status === 'rejected';
+
+        if ((needsBadge && (!hasBadgeEl || !hasRelativeCls)) || (needsGray && !isGray) || (!needsGray && isGray)) {
+          updateCardBadge(cardEl, record);
+        }
+      }
       return;
     }
 

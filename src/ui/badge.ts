@@ -27,8 +27,12 @@ export function updateCardBadge(cardEl: HTMLElement, record?: JobRecord): void {
     if (badgeEl) {
       badgeEl.remove();
     }
+    cardEl.classList.remove('jp-relative-card');
     return;
   }
+
+  // 确保卡片父级始终有相对定位类名，以便 Badge 绝对定位生效
+  cardEl.classList.add('jp-relative-card');
 
   // 确定 Badge 显示的内容
   let badgeText = '';
@@ -57,9 +61,6 @@ export function updateCardBadge(cardEl: HTMLElement, record?: JobRecord): void {
     badgeEl = document.createElement('div');
     badgeEl.className = HASHED_CLASSES.badge;
     badgeEl.setAttribute('data-jp-badge', 'true'); // 打上固定标识以供跨周期定位
-
-    // 确保卡片父级有相对定位类名，以便 Badge 绝对定位生效
-    cardEl.classList.add('jp-relative-card');
     cardEl.appendChild(badgeEl);
   }
 
@@ -70,6 +71,7 @@ export function updateCardBadge(cardEl: HTMLElement, record?: JobRecord): void {
 // 移除 Badge 与灰度
 export function removeCardBadge(cardEl: HTMLElement): void {
   cardEl.removeAttribute('data-jp-gray');
+  cardEl.classList.remove('jp-relative-card');
   const badgeEl = cardEl.querySelector('[data-jp-badge="true"]');
   if (badgeEl) {
     badgeEl.remove();
