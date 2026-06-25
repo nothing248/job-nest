@@ -6,6 +6,42 @@
 
 ---
 
+## 📸 功能预览
+
+<table align="center" width="100%">
+  <thead>
+    <tr>
+      <th align="center" width="50%">📌 状态跟踪</th>
+      <th align="center" width="50%">📝 备注面板</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <img src="./statics/imgs/tracker.png" width="100%" alt="状态跟踪" />
+      </td>
+      <td align="center" valign="middle">
+        <img src="./statics/imgs/remark.png" width="100%" alt="备注面板" />
+      </td>
+    </tr>
+    <tr>
+      <th align="center">📊 数据导出</th>
+      <th align="center">🔍 详情页面</th>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <img src="./statics/imgs/export.png" width="100%" alt="数据导出" />
+      </td>
+      <td align="center" valign="middle">
+        <img src="./statics/imgs/detail-page.png" width="100%" alt="详情页面" />
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+---
+
 ## 🌟 核心特性展示
 
 ### 1. 随手标记与决策辅助
