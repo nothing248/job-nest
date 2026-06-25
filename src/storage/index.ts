@@ -7,7 +7,8 @@ import { Logger } from '../utils/logger';
 const STORAGE_KEYS = {
   JOB_RECORDS: 'jp_job_records',
   REMOTE_CONFIGS: 'jp_remote_configs',
-  LAST_SYNC: 'jp_last_sync_time'
+  LAST_SYNC: 'jp_last_sync_time',
+  DISABLE_REMOTE_SYNC: 'jp_disable_remote_sync'
 };
 
 // 获取所有职位记录，以字典形式返回以方便查找
@@ -27,6 +28,16 @@ function saveJobRecordsMap(map: Record<string, JobRecord>): void {
 }
 
 export const Storage = {
+  // 获取是否禁用远程配置
+  isRemoteSyncDisabled(): boolean {
+    return GM_getValue<boolean>(STORAGE_KEYS.DISABLE_REMOTE_SYNC, false);
+  },
+
+  // 设置是否禁用远程配置
+  setRemoteSyncDisabled(disabled: boolean): void {
+    GM_setValue(STORAGE_KEYS.DISABLE_REMOTE_SYNC, disabled);
+  },
+
   // 保存或更新一条职位记录
   saveJobRecord(record: JobRecord): void {
     const map = getJobRecordsMap();
@@ -57,6 +68,9 @@ export const Storage = {
 
   // 获取配置：合并默认配置与云端更新的配置
   getSiteConfigs(): SiteConfig[] {
+    if (this.isRemoteSyncDisabled()) {
+      return DEFAULT_SITE_CONFIGS;
+    }
     try {
       const rawRemote = GM_getValue<string>(STORAGE_KEYS.REMOTE_CONFIGS, '[]');
       const remoteConfigs: SiteConfig[] = JSON.parse(rawRemote);
@@ -270,6 +284,18 @@ export function registerMenuCommands(): void {
 
   // 6. 复制系统运行日志
   GM_registerMenuCommand('复制当前系统调试日志', copySystemLogs);
+
+  // 7. 切换远程配置同步状态
+  const isDisabled = Storage.isRemoteSyncDisabled();
+  const syncLabel = isDisabled ? '⚙️ [调试模式] 开启云端同步' : '⚙️ [生产模式] 禁用云端同步(强制本地Seed)';
+  GM_registerMenuCommand(syncLabel, () => {
+    Storage.setRemoteSyncDisabled(!isDisabled);
+    alert(!isDisabled 
+      ? '已进入本地调试模式（强制使用本地默认 Seed 配置，不请求远程），页面将刷新生效！' 
+      : '已开启云端配置同步，页面将刷新生效！'
+    );
+    window.location.reload();
+  });
 }
 
 // 递归穿透 Shadow DOM 序列化页面源码，并把 Shadow Root 转化为 template shadowroot 结构

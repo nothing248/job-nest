@@ -96,6 +96,10 @@ function init(): void {
 
 // 检查是否过期并执行配置拉取
 function syncRemoteConfigsIfExpired(): void {
+  if (Storage.isRemoteSyncDisabled()) {
+    Logger.info('Job Nest: 当前处于本地调试模式（禁用远程同步），不进行云端配置拉取。');
+    return;
+  }
   const lastSync = Storage.getLastSyncTime();
   const now = Date.now();
 
