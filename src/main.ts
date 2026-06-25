@@ -57,8 +57,8 @@ if (window.location.hostname.includes('zhipin.com')) {
   }
 }
 
-// 远程同步配置文件 URL (可以是一个 GitHub 仓库或其它静态文件 CDN)
-const REMOTE_CONFIG_URL = 'https://raw.githubusercontent.com/nickyang/job-nest/main/configs/remote-configs.json';
+// 远程同步配置文件 URL (GitHub Pages API 路由)
+const REMOTE_CONFIG_URL = 'https://nothing248.github.io/job-nest/v1/remote-configs.json';
 const SYNC_INTERVAL = 24 * 60 * 60 * 1000; // 24小时同步一次
 
 function init(): void {
